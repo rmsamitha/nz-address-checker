@@ -33,16 +33,11 @@ function App() {
       }
       setLoading(true);
       try {
-
         const response = await fetchAddressSuggestions(input);
-
         const raw = response.data?.addresses || [];
         const addresses = raw.map(item => item.FullAddress);
         setSuggestions(addresses);
-
-        console.log("Set to sugestions status:" + addresses);
       } catch (err) {
-        console.error("API error:", err);
         setSuggestions([]);
       } finally {
         setLoading(false);
@@ -53,8 +48,6 @@ function App() {
 
   const handleInputChange = (event, value) => {
     setQuery(value);
-    console.log("setting query value:" + value);
-
     if (value.length >= 3) {
       debouncedGetSuggestions(value);
     } else {
@@ -71,13 +64,13 @@ function App() {
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        border: '4px solid #c7e6d0ff', // Thick gray border // #e6e8ed
-        borderRadius: '8px',       // Optional: rounded corners
-        backgroundColor: '#fafafa', // Optional: subtle background
-        padding: '24px', // 👈 Add padding here
-        display: 'flex',              // Flexbox enabled
-        justifyContent: 'center',     // Center horizontally
-        alignItems: 'center',         // Center vertically
+        border: '4px solid #c7e6d0ff', 
+        borderRadius: '8px', 
+        backgroundColor: '#fafafa', 
+        padding: '24px',
+        display: 'flex',
+        justifyContent: 'center', 
+        alignItems: 'center',
       }}
     >
       <Container maxWidth="sm">
@@ -87,7 +80,7 @@ function App() {
 
         <Autocomplete
           freeSolo
-          filterOptions={(x) => x} 
+          filterOptions={(x) => x}
           options={suggestions}
           getOptionLabel={(option) => option}
           inputValue={query}
