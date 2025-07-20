@@ -17,19 +17,26 @@
 package org.nz.postal.address;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.nz.postal.address.exception.BadRequestException;
+import org.nz.postal.address.exception.UpstreamServerException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+
+import static java.net.HttpURLConnection.*;
+import static org.nz.postal.address.Constants.ACCESS_CONTROL_ALLOW_ORIGIN;
 
 /**
  * Utility class for managing AWS Secrets Manager secrets and HTTP client configurations.
@@ -122,4 +129,38 @@ public class Utils {
         }
         return httpClient;
     }
+
+    public static void handleUpstreamServerError(String errorMessage, int statusCode) {
+        log.error("Error:" + errorMessage + ", Status Code: " + statusCode);
+        throw new UpstreamServerException(errorMessage, statusCode);
+    }
+
+    public static void handleBadRequestError(String errorMessage, int statusCode) throws BadRequestException {
+        log.error("Error:" + errorMessage + ", Status Code: " + statusCode);
+        throw new BadRequestException(errorMessage, statusCode);
+    }
+
+    public static APIGatewayProxyResponseEvent buildBadGatewayResponse(String errorDescription) {
+        return createErrorResponse(HTTP_BAD_GATEWAY, errorDescription);
+    }
+
+    public static APIGatewayProxyResponseEvent buildInternalServerErrorResponse(String errorDescription) {
+        return createErrorResponse(HTTP_INTERNAL_ERROR, errorDescription);
+    }
+
+    public static APIGatewayProxyResponseEvent buildBadRequestResponse(String errorDescription) {
+        return createErrorResponse(HTTP_BAD_REQUEST, errorDescription);
+    }
+
+    private static APIGatewayProxyResponseEvent createErrorResponse(int statusCode, String errorDescription) {
+        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+        response.setStatusCode(statusCode);
+        Map<String, String> headers = new HashMap<>();
+        //TODO: change 'Access-Control-Allow-Origin' to specific domain in production
+        headers.put(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        response.setHeaders(headers);
+        response.setBody("{\"error\": \"" + errorDescription + "\"}");
+        return response;
+    }
+
 }

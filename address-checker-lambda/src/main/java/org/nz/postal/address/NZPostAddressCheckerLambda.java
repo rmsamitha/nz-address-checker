@@ -35,6 +35,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.HttpHeaders;
+import org.nz.postal.address.exception.BadRequestException;
+import org.nz.postal.address.exception.UpstreamServerException;
 
 import static java.net.HttpURLConnection.*;
 import static org.nz.postal.address.Constants.*;
@@ -63,9 +65,7 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
         try {
             Map<String, String> queryParams = event.getQueryStringParameters();
             if (queryParams == null || !queryParams.containsKey(QUERY_PARAM_Q)) {
-                response.setStatusCode(HTTP_BAD_REQUEST);
-                response.setBody("{\"error\": \"Missing 'q' query parameter.\"}");
-                return response;
+                Utils.handleBadRequestError("Missing " + QUERY_PARAM_Q + "query parameter.", HTTP_BAD_REQUEST);
             }
 
             String query = queryParams.get(QUERY_PARAM_Q);
@@ -87,13 +87,12 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
             headers.put(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
             response.setHeaders(headers);
             response.setBody(apiResponse);
+        } catch (UpstreamServerException e) {
+            return Utils.buildBadGatewayResponse("Error in upstream services");
+        } catch (BadRequestException e) {
+            return Utils.buildBadRequestResponse(e.getMessage());
         } catch (Exception e) {
-            response.setStatusCode(HTTP_INTERNAL_ERROR);
-            Map<String, String> headers = new HashMap<>();
-            //TODO: change 'Access-Control-Allow-Origin' to specific domain in production
-            headers.put(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-            response.setHeaders(headers);
-            response.setBody("{\"error\": \"" + e.getMessage() + "\"}");
+            return Utils.buildInternalServerErrorResponse(e.getMessage());
         }
         return response;
     }
@@ -140,7 +139,9 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
                 tokenExpiry = now + expiresIn - 60; // refresh 1 min earlier
                 log.info("Fetched new token with expiry time " + tokenExpiry);
             } else {
-                throw new Exception("Error fetching access token");
+                String errorMessage = "Error fetching access token. " +
+                        response.getStatusLine().getReasonPhrase();
+                Utils.handleUpstreamServerError(errorMessage, response.getStatusLine().getStatusCode());
             }
         }
         return cachedToken;
@@ -158,8 +159,8 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
     private String callNZPostSuggestAPI(String queryValue, String maxValue, String token) throws Exception {
         String nzPostAddressCheckerSuggestApiUrl = System.getenv(ADDRESS_SUGGEST_API_URL_ENV_VAR);
         URIBuilder uriBuilder = new URIBuilder(nzPostAddressCheckerSuggestApiUrl);
-        uriBuilder.addParameter("q", queryValue);
-        uriBuilder.addParameter("max", maxValue);
+        uriBuilder.addParameter(QUERY_PARAM_Q, queryValue);
+        uriBuilder.addParameter(QUERY_PARAM_MAX, maxValue);
 
         HttpGet nzPostSuggestAPIRequest = new HttpGet(uriBuilder.build());
         nzPostSuggestAPIRequest.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
@@ -171,9 +172,11 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
                 log.debug("NZPostSuggest API returned success response. status code: " + HTTP_OK);
                 return EntityUtils.toString(response.getEntity());
             } else {
-                log.error("Failed to call NZPostSuggest API. Status code: " + response.getStatusLine().getStatusCode());
-                throw new Exception("Error calling NZPostSuggest API");
+                String errorMessage = "Error occurred while calling NZPostSuggest API: " +
+                        response.getStatusLine().getReasonPhrase();
+                Utils.handleUpstreamServerError(errorMessage, response.getStatusLine().getStatusCode());
             }
         }
+        return null;
     }
 }
