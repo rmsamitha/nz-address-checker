@@ -44,9 +44,8 @@ import static org.nz.postal.address.Constants.*;
  * It retrieves an OAuth token and uses it to call the address suggestion API.
  */
 public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-
-    private static final String NZ_POST_API_OAUTH_TOKEN_URL = System.getenv("NZ_POST_API_OAUTH_TOKEN_URL");
-    private static final String NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL = System.getenv("NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL");
+    private static final String ADDRESS_SUGGEST_API_URL_ENV_VAR = "NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL";
+    private static final String NZ_POST_API_OAUTH_TOKEN_URL_ENV_VAR = "NZ_POST_API_OAUTH_TOKEN_URL";
     private static String cachedToken = null;
     private static long tokenExpiry = 0;
     private static final Logger log = LogManager.getLogger(NZPostAddressCheckerLambda.class);
@@ -116,7 +115,7 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
             return cachedToken;
         }
 
-        String tokenEPurl = System.getenv(NZ_POST_API_OAUTH_TOKEN_URL);
+        String tokenEPurl = System.getenv(NZ_POST_API_OAUTH_TOKEN_URL_ENV_VAR);
         httpClient = Utils.getHttpClient();
 
         URIBuilder uriBuilder = new URIBuilder(tokenEPurl);
@@ -157,7 +156,8 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
      * @throws Exception if there is an error calling the API
      */
     private String callNZPostSuggestAPI(String queryValue, String maxValue, String token) throws Exception {
-        URIBuilder uriBuilder = new URIBuilder(NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL);
+        String nzPostAddressCheckerSuggestApiUrl = System.getenv(ADDRESS_SUGGEST_API_URL_ENV_VAR);
+        URIBuilder uriBuilder = new URIBuilder(nzPostAddressCheckerSuggestApiUrl);
         uriBuilder.addParameter("q", queryValue);
         uriBuilder.addParameter("max", maxValue);
 
