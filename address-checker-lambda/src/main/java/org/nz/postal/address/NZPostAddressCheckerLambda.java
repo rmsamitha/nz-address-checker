@@ -5,17 +5,11 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 
-import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
@@ -25,9 +19,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.HttpHeaders;
+
+import static java.net.HttpURLConnection.HTTP_OK;
+import static org.nz.postal.address.Constants.*;
 
 public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
+    private static final String NZ_POST_API_OAUTH_TOKEN_URL = System.getenv("NZ_POST_API_OAUTH_TOKEN_URL");
+    private static final String NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL = System.getenv("NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL");
     private static String cachedToken = null;
     private static long tokenExpiry = 0;
 
@@ -62,9 +62,9 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
 
             response.setStatusCode(200);
             Map<String, String> headers = new HashMap<>();
-            headers.put("Content-Type", "application/json");
-            //TODO: change 'Access-Control-Allow-Origin' to specific domain in production
-            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON);
+            //TODO: In production, change 'Access-Control-Allow-Origin' to the specific domain that the web app is hosted
+            headers.put(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
             response.setHeaders(headers);
             response.setBody(apiResponse);
 
@@ -72,7 +72,7 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
             response.setStatusCode(500);
             Map<String, String> headers = new HashMap<>();
             //TODO: change 'Access-Control-Allow-Origin' to specific domain in production
-            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
             response.setHeaders(headers);
             response.setBody("{\"error\": \"" + e.getMessage() + "\"}");
         }
@@ -84,24 +84,24 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
 
         if (cachedToken != null && tokenExpiry > now) {
             if (log.isDebugEnabled()) {
-                log.debug("Using cached token, expires at: " + tokenExpiry);
+                log.debug("Using cached token. This cached token expires at: " + tokenExpiry);
             }
             return cachedToken;
         }
 
-        String tokenEPurl = "https://oauth.nzpost.co.nz/as/token.oauth2"; // TODO: get from config
+        String tokenEPurl = System.getenv(NZ_POST_API_OAUTH_TOKEN_URL);
 
         httpClient = Utils.getHttpClient();
 
         URIBuilder uriBuilder = new URIBuilder(tokenEPurl);
-        uriBuilder.addParameter("grant_type", "client_credentials");
+        uriBuilder.addParameter("grant_type", CLIENT_CREDENTIALS);
         uriBuilder.addParameter("client_id", Utils.getClientId());
         uriBuilder.addParameter("client_secret", Utils.getClientSecret());
         //uriBuilder.addParameter("client_id", "38875319c09148048016152834a2dde4");
         //uriBuilder.addParameter("client_secret", "06bd03bEE99C4D92ab7cc8F441450bBd");
 
         HttpPost getTokenHttpRequest = new HttpPost(uriBuilder.build());
-        getTokenHttpRequest.addHeader("Content-Type", "application/x-www-form-urlencoded");
+        getTokenHttpRequest.addHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_X_WWW_FORM_URLENCODED);
 
         try (CloseableHttpResponse response = httpClient.execute(getTokenHttpRequest)) {
             if (response.getStatusLine().getStatusCode() == 200) {
@@ -126,19 +126,19 @@ public class NZPostAddressCheckerLambda implements RequestHandler<APIGatewayProx
     }
 
     private String callNZPostSuggestAPI(String queryValue, String maxValue, String token) throws Exception {
-        URIBuilder uriBuilder = new URIBuilder("https://api.nzpost.co.nz/addresschecker/1.0/suggest");
+        URIBuilder uriBuilder = new URIBuilder(NZ_POST_ADDRESS_CHECKER_SUGGEST_API_URL);
         uriBuilder.addParameter("q", queryValue);
         uriBuilder.addParameter("max", maxValue);
 
         HttpGet nzPostSuggestAPIRequest = new HttpGet(uriBuilder.build());
-        nzPostSuggestAPIRequest.addHeader("Authorization", "Bearer " + token);
+        nzPostSuggestAPIRequest.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
         nzPostSuggestAPIRequest.addHeader("client_id", Utils.getClientId());
         //nzPostSuggestAPIRequest.addHeader("client_id", "38875319c09148048016152834a2dde4");
-        nzPostSuggestAPIRequest.addHeader("Accept", "application/json");
+        nzPostSuggestAPIRequest.addHeader(HttpHeaders.ACCEPT, APPLICATION_JSON);
 
         try (CloseableHttpResponse response = httpClient.execute(nzPostSuggestAPIRequest)) {
-            if (response.getStatusLine().getStatusCode() == 200) {
-                log.debug("NZPostSuggest API returned success response.");
+            if (response.getStatusLine().getStatusCode() == HTTP_OK) {
+                log.debug("NZPostSuggest API returned success response. status code: " + HTTP_OK);
                 return EntityUtils.toString(response.getEntity());
             } else {
                 log.error("Failed to call NZPostSuggest API. Status code: " + response.getStatusLine().getStatusCode());
