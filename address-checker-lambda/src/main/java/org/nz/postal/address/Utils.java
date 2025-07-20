@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Samitha Chathuranga
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.nz.postal.address;
 
 import java.io.IOException;
@@ -15,18 +31,27 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRespon
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+/**
+ * Utility class for managing AWS Secrets Manager secrets and HTTP client configurations.
+ */
 public class Utils {
     private static Map<String, String> cachedSecrets;
     private static CloseableHttpClient httpClient;
     private static final Logger log = LogManager.getLogger(Utils.class);
 
+    /**
+     * Loads secrets (client_id and client_secret related to NZ Post AddressChecker API invocation) from AWS Secrets
+     * Manager and caches them.
+     *
+     * @throws Exception if there is an error retrieving or parsing the secret
+     */
     public static void loadSecrets() throws Exception {
         if (cachedSecrets != null) {
-            log.debug("Secrets loaded from cache.");
+            log.debug("Secrets are already available in cache");
             return; // Secrets already loaded
         }
-        String secretName = "NZPostAPIClientCredentials"; // TODO: check if need to get this from environment variable
-        Region region = Region.of("ap-southeast-2");
+        String secretName = System.getenv("NZ_POST_API_CLIENT_SECRET_NAME");
+        Region region = Region.of(System.getenv("AWS_REGION"));
 
         // Create a Secrets Manager client
         try (SecretsManagerClient client = SecretsManagerClient.builder()
@@ -35,15 +60,12 @@ public class Utils {
             GetSecretValueRequest getSecretValueRequest = GetSecretValueRequest.builder()
                     .secretId(secretName)
                     .build();
-            log.info("Retrieving secret value for " + secretName);
             GetSecretValueResponse getSecretValueResponse = client.getSecretValue(getSecretValueRequest);
-
             String secretString = getSecretValueResponse.secretString();
-            log.debug("Retrieved secret string: " + secretString);
+            log.debug("Retrieved secret values related to NZ Post AddressChecker API invocation");
             ObjectMapper mapper = new ObjectMapper();
             cachedSecrets = mapper.readValue(secretString, Map.class);
         } catch (JsonMappingException e) {
-            // Handle JSON processing exceptions
             log.error("Error mapping secret JSON to Map: " + e.getMessage());
             throw e;
         } catch (JsonParseException e) {
@@ -54,11 +76,23 @@ public class Utils {
         }
     }
 
+    /**
+     * Retrieves the client ID from the loaded secrets.
+     *
+     * @return the client ID
+     * @throws Exception if secrets are not loaded or if there is an error retrieving the client ID
+     */
     public static String getClientId() throws Exception {
         loadSecrets();
         return cachedSecrets.get("client_id");
     }
 
+    /**
+     * Retrieves the client secret from the loaded secrets.
+     *
+     * @return the client secret
+     * @throws Exception if secrets are not loaded or if there is an error retrieving the client secret
+     */
     public static String getClientSecret() throws Exception {
         loadSecrets();
         return cachedSecrets.get("client_secret");
@@ -69,8 +103,8 @@ public class Utils {
      */
     public static void setHttpClient() {
         httpClient = HttpClients.custom()
-                .setMaxConnTotal(100) // Set maximum total connections
-                .setMaxConnPerRoute(10) // Set maximum connections per route
+                .setMaxConnTotal(100)
+                .setMaxConnPerRoute(10)
                 .build();
         log.debug("New HTTP client initialized with custom configurations.");
     }
