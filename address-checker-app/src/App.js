@@ -19,6 +19,8 @@ import { Container, Box, Typography, TextField, CircularProgress, Autocomplete }
 import { fetchAddressSuggestions } from './api';
 import debounce from 'lodash.debounce';
 import { useMemo } from 'react';
+import Paper from '@mui/material/Paper';
+import bgImage from './assets/bg-image.jpg';
 
 function App() {
   const [query, setQuery] = React.useState('');
@@ -56,57 +58,90 @@ function App() {
   };
 
   return (
-    <Box
-      sx={{
-        width: '75vw',
-        height: '75vh',
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        border: '4px solid #c7e6d0ff', 
-        borderRadius: '8px', 
-        backgroundColor: '#fafafa', 
-        padding: '24px',
-        display: 'flex',
-        justifyContent: 'center', 
-        alignItems: 'center',
-      }}
-    >
-      <Container maxWidth="sm">
-        <Typography fontSize='1em' gutterBottom align="center" color='#5f5f60ff' sx={{ mb: 4 }}>
-          NEW ZEALAND ADDRESS CHECKER
+    <Box sx={{ height: "100vh", width: "100vw" }}>
+      <Box
+        sx={{
+          height: "20%",
+          bgcolor: "#f9f4f0ff",
+        }}
+      >
+        <Typography fontSize='1.7em' gutterBottom align="left" color='#5f5f60ff' sx={{ pl: 4, pt: 2.5, pb: 2.5 }}>
+          NEW ZEALAND<br />
+          ADDRESS CHECKER
         </Typography>
+      </Box>
 
-        <Autocomplete
-          freeSolo
-          filterOptions={(x) => x}
-          options={suggestions}
-          getOptionLabel={(option) => option}
-          inputValue={query}
-          onInputChange={handleInputChange}
-          loading={loading}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Enter NZ address"
-              variant="outlined"
-              fullWidth
-              autoComplete="off"
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {loading && <CircularProgress size={20} />}
-                    {params.InputProps.endAdornment}
-                  </>
-                )
-              }}
+      {/* Area-2 with Background Image */}
+      <Box
+        sx={{
+          height: "70%",
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+
+        {/* Area-3 (Beige Box for AutoComplete) */}
+        <Paper
+          sx={{
+            height: "40%",
+            bgcolor: "#f9f4f0ff",
+            pt: "1em",
+            pb: "4em",
+            borderRadius: 3,
+            boxShadow: 3,
+            minWidth: 500,
+          }}
+        >
+
+          <Container maxWidth="sm">
+
+            <Paper elevation={0} padding={1} sx={{ p: 4, backgroundColor: '#f9f4f0ff' }}>
+              <Typography fontSize='1em' gutterBottom align="center" color='#124227ff' sx={{ mb: 4 }}>
+                Type at least 3 characters to search for <br />
+                a New Zealand postal address
+              </Typography>
+            </Paper>
+
+            <Autocomplete
+              freeSolo
+              filterOptions={(x) => x}
+              options={suggestions}
+              getOptionLabel={(option) => option}
+              inputValue={query}
+              onInputChange={handleInputChange}
+              loading={loading}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Enter NZ Postal Address"
+                  variant="outlined"
+                  fullWidth
+                  autoComplete="off"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {loading && <CircularProgress size={20} />}
+                        {params.InputProps.endAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
             />
-          )}
-        />
 
-      </Container>
+          </Container>
+        </Paper>
+      </Box>
+      <Box sx={{ bgcolor: "#f9f4f0ff", pr: 4, pt: 2 }}>
+        <Typography fontSize='1em' gutterBottom align="right" color='#124227ff' sx={{ mb: 4 }}>
+          Developed by Samitha Chathuranga
+        </Typography>
+      </Box>
     </Box>
   );
 }
