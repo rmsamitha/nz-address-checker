@@ -72,6 +72,38 @@ the passed text. Lambda formats the response and returns it to the frontend.
 4. Lambda retrieves API credentials from AWS Secrets Manager and calls the token endpoint and NZPost.AddressChecker API.
 5. The NZPost.AddressChecker response is formatted by Lambda and returned to the React application via API Gateway.
 
+## Explanation of design / technology choices
+
+Here’s a short list of **reason points for each technology**:
+
+### 1. Web App – React
+
+* **Fast, responsive UI** using virtual DOM and state management.
+* **Component-based architecture** for reusable and modular code.
+* Ideal for **real-time address suggestions** and interactive forms.
+* **Large ecosystem** and easy integration with REST APIs.
+
+### 2. API Gateway – AWS API Gateway
+
+* **Serverless integration** with Lambda (no server management).
+* **Secure API exposure** with CORS, throttling, and authorization.
+* **Auto-scaling** and high availability for backend requests.
+* **Cost-effective pay-per-use** pricing.
+
+### 3. Backend Service – Java Lambda Function
+
+* **Enterprise-grade reliability** with strong static typing.
+* **Robust API handling** with mature libraries like Apache HttpClient.
+* **Great performance on warm starts** (JVM JIT optimizations).
+* **Easy to implement complex logic** for calling external APIs (NZ Post API).
+
+### 4. Secret Management – AWS Secrets Manager
+
+* **Secure storage of sensitive credentials** (API keys, secrets).
+* **Encrypted at rest** using AWS KMS.
+* **Seamless runtime retrieval** from Lambda (no hardcoding).
+* **Automatic rotation** and centralized secret management.
+
 ## TODO Next
 
 - Introduce CloudFront as a CDN in front of the S3 bucket to improve performance and security.
